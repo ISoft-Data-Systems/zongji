@@ -1,6 +1,6 @@
 {
-  "name": "zongji",
-  "version": "0.5.1",
+  "name": "@isoftdata/zongji",
+  "version": "0.5.2",
   "description": "A mysql binlog listener running on Node.js",
   "main": "index.js",
   "directories": {
@@ -12,7 +12,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/nevill/zongji"
+    "url": "https://github.com/ISoft-Data-Systems/zongji"
   },
   "keywords": [
     "mysql",
@@ -25,9 +25,9 @@
   ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/nevill/zongji/issues"
+    "url": "https://github.com/ISoft-Data-Systems/zongji/issues"
   },
-  "homepage": "https://github.com/nevill/zongji",
+  "homepage": "https://github.com/ISoft-Data-Systems/zongji",
   "engines": {
     "node": ">= 8.0"
   },

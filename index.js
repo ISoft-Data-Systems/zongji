@@ -18,7 +18,6 @@ const TableInfoQueryTemplate = `
   		table_schema='%s' AND table_name='%s' 
 	ORDER BY ORDINAL_POSITION;`
 
-
 function ZongJi(dsn) {
 	EventEmitter.call(this)
 
@@ -263,13 +262,26 @@ ZongJi.prototype.start = function(options = {}) {
 				}
 				break
 			}
+			// case 'Rotate':
+			// 	if (this.options.filename !== event.binlogName) {
+			// 		this.options.filename = event.binlogName
+			// 	}
+			// 	break
 			case 'Rotate':
 				if (this.options.filename !== event.binlogName) {
 					this.options.filename = event.binlogName
+
+					// Actual binlog rotate event, change position to nextPosition
+					this.options.position = event.nextPosition
+				} else {
+					// Its an "extra" binlog rotate event, don't change options.position to nextPosition but filename stays the same
+					this.options.position = event.position
 				}
 				break
 		}
-		this.options.position = event.nextPosition
+		// We don't want nextPosition set here if it's not an actual rotate event
+
+		//this.options.position = event.nextPosition
 		this.emit('binlog', event)
 	}
 

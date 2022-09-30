@@ -136,7 +136,7 @@ ZongJi.prototype._fetchTableInfo = function(tableMapEvent, next) {
 
 		if (rows.length === 0) {
 			// Let consumer handle error, could be a table that no longer exists or a permissions issue
-			this.emit('error', `No rows returned from getTableInfo query ${tableMapEvent.schemaName}.${tableMapEvent.tableName}`)
+			this.emit('error', new Error(`No rows returned from getTableInfo query ${tableMapEvent.schemaName}.${tableMapEvent.tableName}`))
 			// This is a not necessarily a fatal error so continue
 			next()
 			// exit?

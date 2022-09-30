@@ -135,11 +135,11 @@ ZongJi.prototype._fetchTableInfo = function(tableMapEvent, next) {
 		}
 
 		if (rows.length === 0) {
-			this.emit('error', new Error(
-				`Insufficient permissions to access: ${
-					tableMapEvent.schemaName }.${ tableMapEvent.tableName}`))
-			// This is a fatal error, no additional binlog events will be
-			// processed since next() will never be called
+			// Let consumer handle error, could be a table that no longer exists or a permissions issue
+			this.emit('error', `No rows returned from getTableInfo query ${tableMapEvent.schemaName}.${tableMapEvent.tableName}`)
+			// This is a not necessarily a fatal error so continue
+			next()
+			// exit?
 			return
 		}
 
@@ -252,21 +252,24 @@ ZongJi.prototype.start = function(options = {}) {
 				const tableMap = this.tableMap[event.tableId]
 				if (!tableMap) {
 					this.connection.pause()
+					// add options to event, should updated with rotate event so it's always valid
+					event.instanceOptions = this.options
 					this._fetchTableInfo(event, () => {
-						// merge the column info with metadata
-						event.updateColumnInfo()
-						this.emit('binlog', event)
-						this.connection.resume()
+						const returnedTableMap = this.tableMap[event.tableId]
+						if (!returnedTableMap || !returnedTableMap.columnSchemas) {
+							// Skip if no column info is returned
+							this.connection.resume()
+						} else {
+							// merge the column info with metadata
+							event.updateColumnInfo()
+							this.emit('binlog', event)
+							this.connection.resume()
+						}
 					})
-					return
+					//return
 				}
 				break
 			}
-			// case 'Rotate':
-			// 	if (this.options.filename !== event.binlogName) {
-			// 		this.options.filename = event.binlogName
-			// 	}
-			// 	break
 			case 'Rotate':
 				if (this.options.filename !== event.binlogName) {
 					this.options.filename = event.binlogName

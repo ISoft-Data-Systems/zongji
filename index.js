@@ -246,7 +246,7 @@ ZongJi.prototype.start = function(options = {}) {
 		this._positionCache = {
 			position: event.nextPosition,
 			fileName: event.binlogName,
-			timeStamp: Date.now(),
+			instanceTimeStamp: Date.now(),
 		}
 		// Do not emit events that have been filtered out
 		if (event === undefined || event._filtered === true) {

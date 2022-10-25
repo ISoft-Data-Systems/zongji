@@ -208,6 +208,7 @@ ZongJi.prototype.get = function(name) {
 ZongJi.prototype.start = function(options = {}) {
 	this._options(options)
 	this._filters(options)
+	this._positionCache
 
 	const testChecksum = (resolve, reject) => {
 		this._isChecksumEnabled((err, checksumEnabled) => {
@@ -241,7 +242,12 @@ ZongJi.prototype.start = function(options = {}) {
 		if (error) {
 			return this.emit('error', error)
 		}
-
+		// Store event position in global
+		this._positionCache = {
+			position: event.nextPosition,
+			fileName: event.binlogName,
+			timeStamp: Date.now(),
+		}
 		// Do not emit events that have been filtered out
 		if (event === undefined || event._filtered === true) {
 			return

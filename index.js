@@ -159,12 +159,14 @@ ZongJi.prototype._options = function({
 	filename,
 	position,
 	startAtEnd,
+	cacheInterval = 0, // in seconds, determines how often to check if binlog is updated
 }) {
 	this.options = {
 		serverId,
 		filename,
 		position,
 		startAtEnd,
+		cacheInterval,
 	}
 }
 
@@ -243,14 +245,14 @@ ZongJi.prototype.start = function(options = {}) {
 			return this.emit('error', error)
 		}
 
-		// Do not emit events that have been filtered out
+		// Do not emit events that are undefined or have been filtered out
 		if (event === undefined) {
 			return
 		}
 		if (event._filtered === true) {
-			// Update position cache
+			// // Store event position in mem even if filtered out
 			this._positionCache = {
-				position: this.event.nextPosition,
+				position: event.nextPosition,
 				filename: this.options.filename,
 			}
 			return
@@ -285,15 +287,29 @@ ZongJi.prototype.start = function(options = {}) {
 
 					// Actual binlog rotate event, change position to nextPosition
 					this.options.position = event.nextPosition
+					// Update position cache
+					this._positionCache = {
+						position: event.nextPosition,
+						filename: event.binlogName,
+					}
 				} else {
 					// Its an "extra" binlog rotate event, don't change options.position to nextPosition but filename stays the same
 					this.options.position = event.position
+					// Update position cache again?
+					this._positionCache = {
+						position: event.position,
+						filename: event.binlogName,
+					}
 				}
 				break
 		}
 		// We don't want nextPosition set here if it's not an actual rotate event
 
-		//this.options.position = event.nextPosition
+		// Store event position in mem
+		this._positionCache = {
+			position: event.nextPosition,
+			fileName: this.options.filename,
+		}
 		this.emit('binlog', event)
 	}
 
@@ -306,13 +322,22 @@ ZongJi.prototype.start = function(options = {}) {
 	Promise.all(promises)
 		.then(() => {
 			this.BinlogClass = initBinlogClass(this)
-			// Update positionCache with current position from options or from findBinlogEnd query if startAtEnd is true
 			const currentPosition = this.options.position
 			const currentBinlog = this.options.filename
+			// update positionCache with current position from options or from findBinlogEnd query
 			this._positionCache = {
 				position: currentPosition,
 				filename: currentBinlog,
 			}
+			// if cacheInterval given, start interval to compare positionCache to current position
+			// if (this.options.cacheInterval) {
+			// 	console.log('starting interval')
+			// }
+			// start stall timer if options.stallInterval is set
+			this.stallCheckInterval = setInterval(async() => {
+				//let currentPosition = await this._findBinlogEnd()
+				console.log('interval position check')
+			}, 10000)
 			this.ready = true
 			this.emit('ready')
 

@@ -208,7 +208,7 @@ ZongJi.prototype.get = function(name) {
 ZongJi.prototype.start = function(options = {}) {
 	this._options(options)
 	this._filters(options)
-	this._positionCache
+	this._positionCache = {}
 
 	const testChecksum = (resolve, reject) => {
 		this._isChecksumEnabled((err, checksumEnabled) => {
@@ -242,14 +242,17 @@ ZongJi.prototype.start = function(options = {}) {
 		if (error) {
 			return this.emit('error', error)
 		}
-		// Store event position in global
-		this._positionCache = {
-			position: event.nextPosition,
-			fileName: event.binlogName,
-			instanceTimeStamp: Date.now(),
-		}
+
 		// Do not emit events that have been filtered out
-		if (event === undefined || event._filtered === true) {
+		if (event === undefined) {
+			return
+		}
+		if (event._filtered === true) {
+			// Update position cache
+			this._positionCache = {
+				position: this.event.nextPosition,
+				filename: this.options.filename,
+			}
 			return
 		}
 
@@ -303,6 +306,13 @@ ZongJi.prototype.start = function(options = {}) {
 	Promise.all(promises)
 		.then(() => {
 			this.BinlogClass = initBinlogClass(this)
+			// Update positionCache with current position from options or from findBinlogEnd query if startAtEnd is true
+			const currentPosition = this.options.position
+			const currentBinlog = this.options.filename
+			this._positionCache = {
+				position: currentPosition,
+				filename: currentBinlog,
+			}
 			this.ready = true
 			this.emit('ready')
 

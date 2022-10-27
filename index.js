@@ -222,7 +222,7 @@ ZongJi.prototype.start = function(options = {}) {
 			}
 		})
 	}
-
+	// Might be able to just re-use this
 	const findBinlogEnd = (resolve, reject) => {
 		this._findBinlogEnd((err, result) => {
 			if (err) {
@@ -240,6 +240,23 @@ ZongJi.prototype.start = function(options = {}) {
 		})
 	}
 
+	const updateCurrentBinlogPosition = (resolve, reject) => {
+		this._findBinlogEnd((err, result) => {
+			if (err) {
+				return reject(err)
+			}
+
+			if (result) {
+				this._currentPosition =
+					{
+						filename: result.Log_name,
+						position: result.File_size,
+					}
+			}
+
+			resolve()
+		})
+	}
 	const binlogHandler = (error, event) => {
 		if (error) {
 			return this.emit('error', error)
@@ -250,17 +267,22 @@ ZongJi.prototype.start = function(options = {}) {
 			return
 		}
 		if (event._filtered === true) {
-			// // Store event position in mem even if filtered out
+			// Store event position in mem even if filtered out
 			this._positionCache = {
 				position: event.nextPosition,
 				filename: this.options.filename,
 			}
 			return
 		}
-
+		// TODO: might be able to remove some of the positionCache updates
 		switch (event.getTypeName()) {
 			case 'TableMap': {
 				const tableMap = this.tableMap[event.tableId]
+				// TableMap event has position info, update cache
+				this._positionCache = {
+					position: event.nextPosition,
+					filename: this.options.filename,
+				}
 				if (!tableMap) {
 					this.connection.pause()
 					// add options to event, should updated with rotate event so it's always valid
@@ -289,7 +311,7 @@ ZongJi.prototype.start = function(options = {}) {
 					this.options.position = event.nextPosition
 					// Update position cache
 					this._positionCache = {
-						position: event.nextPosition,
+						position: event.position,
 						filename: event.binlogName,
 					}
 				} else {
@@ -302,14 +324,15 @@ ZongJi.prototype.start = function(options = {}) {
 					}
 				}
 				break
+			default:
+				// Store event position in mem
+				this._positionCache = {
+					position: event.nextPosition,
+					fileName: this.options.filename,
+				}
 		}
 		// We don't want nextPosition set here if it's not an actual rotate event
 
-		// Store event position in mem
-		this._positionCache = {
-			position: event.nextPosition,
-			fileName: this.options.filename,
-		}
 		this.emit('binlog', event)
 	}
 
@@ -324,20 +347,12 @@ ZongJi.prototype.start = function(options = {}) {
 			this.BinlogClass = initBinlogClass(this)
 			const currentPosition = this.options.position
 			const currentBinlog = this.options.filename
-			// update positionCache with current position from options or from findBinlogEnd query
+			// Update positionCache with current position from options or from findBinlogEnd query
 			this._positionCache = {
 				position: currentPosition,
 				filename: currentBinlog,
 			}
-			// if cacheInterval given, start interval to compare positionCache to current position
-			// if (this.options.cacheInterval) {
-			// 	console.log('starting interval')
-			// }
-			// start stall timer if options.stallInterval is set
-			this.stallCheckInterval = setInterval(async() => {
-				//let currentPosition = await this._findBinlogEnd()
-				console.log('interval position check')
-			}, 10000)
+
 			this.ready = true
 			this.emit('ready')
 
@@ -348,6 +363,16 @@ ZongJi.prototype.start = function(options = {}) {
 		.catch(err => {
 			this.emit('error', err)
 		})
+	// TODO - add check for interval use
+	// Set interval that can be cancelled on stop
+	this.cacheCheckInterval = setInterval(() => {
+		const getCurrentPosition = new Promise(updateCurrentBinlogPosition)
+		getCurrentPosition.then(() => {
+			console.log('current position: ', JSON.stringify(this._currentPosition), ' cached position: ', JSON.stringify(this._positionCache))
+		}).catch(err => {
+			console.error(err)
+		})
+	}, 5000)
 }
 
 ZongJi.prototype.stop = function() {

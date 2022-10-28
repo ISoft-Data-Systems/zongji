@@ -374,11 +374,7 @@ ZongJi.prototype.start = function(options = {}) {
 		getCurrentPosition.then(() => {
 			const positionDiff = this._queriedPosition.position - this._cachedPosition.position
 			// Emit warning event if current and cached position are different, let the consumer handle
-			if ((positionDiff > 256) || (this._queriedPosition.filename !== this._cachedPosition.filename)) {
-				// There appears to be a situation after a rotate event where the position isn't correct or there's another event
-				// of unknown type and size that is not accounted for in the position.
-				// Default min binlog event size limit
-				// https://dev.mysql.com/doc/refman/8.0/en/replication-options-binary-log.html
+			if ((positionDiff > 0) || (this._queriedPosition.filename !== this._cachedPosition.filename)) {
 				this.emit('warning', { msg: `Current and cached position mismatch: ${positionDiff}`, cachedPosition: this._cachedPosition, queriedPosition: this._queriedPosition })
 			}
 		}).catch(err => {

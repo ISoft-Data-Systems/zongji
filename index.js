@@ -9,14 +9,14 @@ const ConnectionConfigMap = {
 }
 
 const TableInfoQueryTemplate = `
-	SELECT 
-  		COLUMN_NAME, COLLATION_NAME, CHARACTER_SET_NAME, 
-  		COLUMN_COMMENT, COLUMN_TYPE 
-  	FROM 
-		information_schema.columns 
-	WHERE 
-  		table_schema='%s' AND table_name='%s' 
-	ORDER BY ORDINAL_POSITION;`
+    SELECT 
+          COLUMN_NAME, COLLATION_NAME, CHARACTER_SET_NAME, 
+          COLUMN_COMMENT, COLUMN_TYPE 
+      FROM 
+        information_schema.columns 
+    WHERE 
+          table_schema='%s' AND table_name='%s' 
+    ORDER BY ORDINAL_POSITION;`
 
 function ZongJi(dsn) {
 	EventEmitter.call(this)
@@ -207,10 +207,12 @@ ZongJi.prototype.get = function(name) {
 // - `filename`, `position` the position of binlog to beigin with
 // - `startAtEnd` if true, will update filename / postion automatically
 // - `includeEvents`, `excludeEvents`, `includeSchema`, `exludeSchema` filter different binlog events bubbling
+// - `cacheInterval` in seconds, determines how often to compare current and most recently seen binlog position, off by default
 ZongJi.prototype.start = function(options = {}) {
 	this._options(options)
 	this._filters(options)
-	this._positionCache = {}
+	this._cachedPosition = {}
+	this._queriedPosition = {}
 
 	const testChecksum = (resolve, reject) => {
 		this._isChecksumEnabled((err, checksumEnabled) => {
@@ -222,7 +224,7 @@ ZongJi.prototype.start = function(options = {}) {
 			}
 		})
 	}
-	// Might be able to just re-use this
+
 	const findBinlogEnd = (resolve, reject) => {
 		this._findBinlogEnd((err, result) => {
 			if (err) {
@@ -239,7 +241,6 @@ ZongJi.prototype.start = function(options = {}) {
 			resolve()
 		})
 	}
-
 	const updateCurrentBinlogPosition = (resolve, reject) => {
 		this._findBinlogEnd((err, result) => {
 			if (err) {
@@ -247,16 +248,17 @@ ZongJi.prototype.start = function(options = {}) {
 			}
 
 			if (result) {
-				this._currentPosition =
-					{
-						filename: result.Log_name,
-						position: result.File_size,
-					}
+				this._queriedPosition =
+                    {
+                    	filename: result.Log_name,
+                    	position: result.File_size,
+                    }
 			}
 
 			resolve()
 		})
 	}
+
 	const binlogHandler = (error, event) => {
 		if (error) {
 			return this.emit('error', error)
@@ -267,22 +269,23 @@ ZongJi.prototype.start = function(options = {}) {
 			return
 		}
 		if (event._filtered === true) {
-			// Store event position in mem even if filtered out
-			this._positionCache = {
+			// // Store event position in mem even if filtered out
+			this._cachedPosition = {
 				position: event.nextPosition,
 				filename: this.options.filename,
 			}
+
 			return
 		}
-		// TODO: might be able to remove some of the positionCache updates
+
 		switch (event.getTypeName()) {
 			case 'TableMap': {
-				const tableMap = this.tableMap[event.tableId]
-				// TableMap event has position info, update cache
-				this._positionCache = {
+				// TableMap is a special event but we can update cache anyway
+				this._cachedPosition = {
 					position: event.nextPosition,
 					filename: this.options.filename,
 				}
+				const tableMap = this.tableMap[event.tableId]
 				if (!tableMap) {
 					this.connection.pause()
 					// add options to event, should updated with rotate event so it's always valid
@@ -310,7 +313,8 @@ ZongJi.prototype.start = function(options = {}) {
 					// Actual binlog rotate event, change position to nextPosition
 					this.options.position = event.nextPosition
 					// Update position cache
-					this._positionCache = {
+					// TODO: confirm this
+					this._cachedPosition = {
 						position: event.position,
 						filename: event.binlogName,
 					}
@@ -318,24 +322,25 @@ ZongJi.prototype.start = function(options = {}) {
 					// Its an "extra" binlog rotate event, don't change options.position to nextPosition but filename stays the same
 					this.options.position = event.position
 					// Update position cache again?
-					this._positionCache = {
+					this._cachedPosition = {
 						position: event.position,
 						filename: event.binlogName,
 					}
 				}
+
 				break
 			default:
 				// Store event position in mem
-				this._positionCache = {
+				this._cachedPosition = {
 					position: event.nextPosition,
 					fileName: this.options.filename,
 				}
 		}
+    
 		// We don't want nextPosition set here if it's not an actual rotate event
 
 		this.emit('binlog', event)
 	}
-
 	let promises = [ new Promise(testChecksum) ]
 
 	if (this.options.startAtEnd) {
@@ -347,8 +352,8 @@ ZongJi.prototype.start = function(options = {}) {
 			this.BinlogClass = initBinlogClass(this)
 			const currentPosition = this.options.position
 			const currentBinlog = this.options.filename
-			// Update positionCache with current position from options or from findBinlogEnd query
-			this._positionCache = {
+			// update positionCache with current position from options or from findBinlogEnd query
+			this._cachedPosition = {
 				position: currentPosition,
 				filename: currentBinlog,
 			}
@@ -363,18 +368,18 @@ ZongJi.prototype.start = function(options = {}) {
 		.catch(err => {
 			this.emit('error', err)
 		})
-	// TODO: Check setting before starting timer
+	// Check setting before starting timer
 	this.cacheCheckInterval = setInterval(() => {
 		const getCurrentPosition = new Promise(updateCurrentBinlogPosition)
 		getCurrentPosition.then(() => {
-			const positionDiff = this._currentPosition.position - this._positionCache.position
+			const positionDiff = this._queriedPosition.position - this._cachedPosition.position
 			// Emit warning event if current and cached position are different, let the consumer handle
-			if ((positionDiff > 256) || (this._currentPosition.filename !== this._positionCache.filename)) {
+			if ((positionDiff > 256) || (this._queriedPosition.filename !== this._cachedPosition.filename)) {
 				// There appears to be a situation after a rotate event where the position isn't correct or there's another event
 				// of unknown type and size that is not accounted for in the position.
 				// Default min binlog event size limit
 				// https://dev.mysql.com/doc/refman/8.0/en/replication-options-binary-log.html
-				this.emit('warning', { msg: `Current and cached position mismatch: ${positionDiff}`, cachedPosition: this._positionCache, currentPosition: this._currentPosition })
+				this.emit('warning', { msg: `Current and cached position mismatch: ${positionDiff}`, cachedPosition: this._cachedPosition, queriedPosition: this._queriedPosition })
 			}
 		}).catch(err => {
 			console.error(err)

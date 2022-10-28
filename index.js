@@ -9,14 +9,14 @@ const ConnectionConfigMap = {
 }
 
 const TableInfoQueryTemplate = `
-    SELECT 
-          COLUMN_NAME, COLLATION_NAME, CHARACTER_SET_NAME, 
-          COLUMN_COMMENT, COLUMN_TYPE 
-      FROM 
-        information_schema.columns 
-    WHERE 
-          table_schema='%s' AND table_name='%s' 
-    ORDER BY ORDINAL_POSITION;`
+	SELECT 
+  		COLUMN_NAME, COLLATION_NAME, CHARACTER_SET_NAME, 
+  		COLUMN_COMMENT, COLUMN_TYPE 
+  	FROM 
+		information_schema.columns 
+	WHERE 
+  		table_schema='%s' AND table_name='%s' 
+	ORDER BY ORDINAL_POSITION;`
 
 function ZongJi(dsn) {
 	EventEmitter.call(this)
@@ -249,10 +249,10 @@ ZongJi.prototype.start = function(options = {}) {
 
 			if (result) {
 				this._queriedPosition =
-                    {
-                    	filename: result.Log_name,
-                    	position: result.File_size,
-                    }
+					{
+						filename: result.Log_name,
+						position: result.File_size,
+					}
 			}
 
 			resolve()
@@ -336,7 +336,7 @@ ZongJi.prototype.start = function(options = {}) {
 					fileName: this.options.filename,
 				}
 		}
-    
+	
 		// We don't want nextPosition set here if it's not an actual rotate event
 
 		this.emit('binlog', event)
@@ -372,10 +372,10 @@ ZongJi.prototype.start = function(options = {}) {
 	this.cacheCheckInterval = setInterval(() => {
 		const getCurrentPosition = new Promise(updateCurrentBinlogPosition)
 		getCurrentPosition.then(() => {
-			const positionDiff = this._queriedPosition.position - this._cachedPosition.position
+			const positionDifference = this._queriedPosition.position - this._cachedPosition.position
 			// Emit warning event if current and cached position are different, let the consumer handle
-			if ((positionDiff > 0) || (this._queriedPosition.filename !== this._cachedPosition.filename)) {
-				this.emit('warning', { msg: `Current and cached position mismatch: ${positionDiff}`, cachedPosition: this._cachedPosition, queriedPosition: this._queriedPosition })
+			if ((positionDifference > 0) || (this._queriedPosition.filename !== this._cachedPosition.filename)) {
+				this.emit('warning', { msg: `Current and cached position mismatch: ${positionDifference}`, positionDifference, cachedPosition: this._cachedPosition, queriedPosition: this._queriedPosition })
 			}
 		}).catch(err => {
 			console.error(err)

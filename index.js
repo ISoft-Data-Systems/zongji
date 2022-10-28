@@ -363,12 +363,19 @@ ZongJi.prototype.start = function(options = {}) {
 		.catch(err => {
 			this.emit('error', err)
 		})
-	// TODO - add check for interval use
-	// Set interval that can be cancelled on stop
+	// TODO: Check setting before starting timer
 	this.cacheCheckInterval = setInterval(() => {
 		const getCurrentPosition = new Promise(updateCurrentBinlogPosition)
 		getCurrentPosition.then(() => {
-			console.log('current position: ', JSON.stringify(this._currentPosition), ' cached position: ', JSON.stringify(this._positionCache))
+			const positionDiff = this._currentPosition.position - this._positionCache.position
+			// Emit warning event if current and cached position are different, let the consumer handle
+			if ((positionDiff > 256) || (this._currentPosition.filename !== this._positionCache.filename)) {
+				// There appears to be a situation after a rotate event where the position isn't correct or there's another event
+				// of unknown type and size that is not accounted for in the position.
+				// Default min binlog event size limit
+				// https://dev.mysql.com/doc/refman/8.0/en/replication-options-binary-log.html
+				this.emit('warning', { msg: `Current and cached position mismatch: ${positionDiff}`, cachedPosition: this._positionCache, currentPosition: this._currentPosition })
+			}
 		}).catch(err => {
 			console.error(err)
 		})

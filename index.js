@@ -376,6 +376,10 @@ ZongJi.prototype.start = function(options = {}) {
 }
 
 ZongJi.prototype.stop = function() {
+	// Stop the timer if exists
+	if (this.cacheCheckInterval) {
+		clearInterval(this.cacheCheckInterval)
+	}
 	// Binary log connection does not end with destroy()
 	this.connection.destroy()
 	this.ctrlConnection.query(

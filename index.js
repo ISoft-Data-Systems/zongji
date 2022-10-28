@@ -333,12 +333,11 @@ ZongJi.prototype.start = function(options = {}) {
 				// Store event position in mem
 				this._cachedPosition = {
 					position: event.nextPosition,
-					fileName: this.options.filename,
+					filename: this.options.filename,
 				}
 		}
 	
 		// We don't want nextPosition set here if it's not an actual rotate event
-
 		this.emit('binlog', event)
 	}
 	let promises = [ new Promise(testChecksum) ]

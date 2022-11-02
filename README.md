@@ -86,6 +86,7 @@ Event Name | Description
 `binlog`   | Once a binlog is received and passes the filter, it will bubble up with this event.
 `error`    | Every error will be caught by this event.
 `stopped`  | Emitted when ZongJi connection is stopped (ZongJi#stop is called).
+`warning`  | Emitted when last cached binlog position and recently queried binlog position don't match
 
 **Options available:**
 
@@ -99,6 +100,7 @@ Option Name | Type | Description
 `excludeEvents` | `[string]` | Array of event names to exclude<br>**Example:** `['rotate', 'tablemap']`
 `includeSchema` | `object` | Object describing which databases and tables to include (Only for row events). Use database names as the key and pass an array of table names or `true` (for the entire database).<br>**Example:** ```{ 'my_database': ['allow_table', 'another_table'], 'another_db': true }```
 `excludeSchema` | `object` | Object describing which databases and tables to exclude (Same format as `includeSchema`)<br>**Example:** ```{ 'other_db': ['disallowed_table'], 'ex_db': true }```
+`cacheInterval` | `integer` | Interval in milliseconds to check and compare the last cached binlog position and recently queried binlog position. If they don't match, a `warning` event will be emitted. Omit to disable.
 
 * By default, all events and schema are emitted.
 * `excludeSchema` and `excludeEvents` take precedence over `includeSchema` and `includeEvents`, respectively.

@@ -285,7 +285,6 @@ ZongJi.prototype.start = function(options = {}) {
 					position: event.nextPosition,
 					filename: this.options.filename,
 				}
-				console.log(`cached position after rotate event: ${this._cachedPosition.position}, filename: ${this._cachedPosition.filename}`)
 				const tableMap = this.tableMap[event.tableId]
 				if (!tableMap) {
 					this.connection.pause()
@@ -328,7 +327,6 @@ ZongJi.prototype.start = function(options = {}) {
 						filename: event.binlogName,
 					}
 				}
-				console.log(`cached position after rotate event: ${this._cachedPosition.position}, filename: ${this._cachedPosition.filename}`)
 
 				break
 			default:
@@ -337,12 +335,9 @@ ZongJi.prototype.start = function(options = {}) {
 					position: event.nextPosition,
 					filename: this.options.filename,
 				}
-				console.log(`cached position after default event: ${this._cachedPosition.position}, filename: ${this._cachedPosition.filename}`)
 		}
 	
 		// We don't want nextPosition set here if it's not an actual rotate event
-		console.log(`new event: ${event.getTypeName()}, nextPosition: ${event.nextPosition}, position: ${event.position}, event filename: ${event.binlogName} options filename: ${this.options.filename}`)
-		console.log(`compare cached position after new event: ${this._cachedPosition.position}, filename: ${this._cachedPosition.filename}`)
 		this.emit('binlog', event)
 	}
 	let promises = [ new Promise(testChecksum) ]
@@ -383,7 +378,7 @@ ZongJi.prototype.start = function(options = {}) {
 					this.emit('warning', { msg: `Current and cached position mismatch: ${positionDifference}`, positionDifference, cachedPosition: this._cachedPosition, queriedPosition: this._queriedPosition })
 				}
 			}).catch(err => {
-				console.error(err)
+				console.error('Zongji cacheCheckInterval Error: ', err)
 			})
 		}, this.options.cacheInterval)
 	}

@@ -378,7 +378,10 @@ ZongJi.prototype.start = function(options = {}) {
 					this.emit('warning', { msg: `Current and cached position mismatch: ${positionDifference}`, positionDifference, cachedPosition: this._cachedPosition, queriedPosition: this._queriedPosition })
 				}
 			}).catch(err => {
-				console.error('Zongji cacheCheckInterval Error: ', err)
+				const msg = 'Zongji cacheCheckInterval Error: ' + err
+				console.error(msg)
+				// Apparently, the connection could get stale and this will fail.  We should emit the error event.
+				this.emit('error', {msg})
 			})
 		}, this.options.cacheInterval)
 	}

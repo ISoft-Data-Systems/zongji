@@ -1,4 +1,4 @@
-const mysql = require('mysql');
+const mysql = require('mysql2');
 
 const settings = require('../settings/mysql');
 const querySequence = require('./querySequence');

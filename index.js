@@ -1,4 +1,4 @@
-const mysql = require('mysql')
+const mysql = require('mysql2')
 const util = require('util')
 const EventEmitter = require('events').EventEmitter
 const initBinlogClass = require('./lib/sequence/binlog')
@@ -360,8 +360,8 @@ ZongJi.prototype.start = function(options = {}) {
 			this.ready = true
 			this.emit('ready')
 
-			this.connection._protocol._enqueue(
-				new this.BinlogClass(binlogHandler),
+			this.connection.addCommand(
+				new this.BinlogClass(binlogHandler)
 			)
 		})
 		.catch(err => {

@@ -286,7 +286,7 @@ ZongJi.prototype.start = function(options = {}) {
 					filename: this.options.filename,
 				}
 				const tableMap = this.tableMap[event.tableId]
-				if (!tableMap) {
+				if (!tableMap || tableMap.tableName !== event.tableName || tableMap.columns.length !== event.columnCount) {
 					this.connection.pause()
 					// add options to event, should updated with rotate event so it's always valid
 					event.instanceOptions = this.options

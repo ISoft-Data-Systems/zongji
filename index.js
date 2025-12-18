@@ -122,6 +122,31 @@ ZongJi.prototype._findBinlogEnd = function(next) {
 }
 
 ZongJi.prototype._fetchTableInfo = function(tableMapEvent, next) {
+	// Log table map event info before query is run
+	console.error('[DEBUG] _fetchTableInfo called:', {
+		timestamp: new Date().toISOString(),
+		tableId: tableMapEvent.tableId,
+		schemaName: tableMapEvent.schemaName,
+		tableName: tableMapEvent.tableName,
+		columnCount: tableMapEvent.columnCount,
+		columnTypes: tableMapEvent.columnTypes,
+		binlogPosition: tableMapEvent.nextPosition
+	})
+	// Defensive check, early exit if missing info
+	if (!tableMapEvent.columnCount || !tableMapEvent.columnTypes) {
+		console.error('[DEBUG] ERROR: Missing columnCount or columnTypes on tableMapEvent:', {
+			timestamp: new Date().toISOString(),
+			tableId: tableMapEvent.tableId,
+			schemaName: tableMapEvent.schemaName,
+			tableName: tableMapEvent.tableName,
+			columnCount: tableMapEvent.columnCount,
+			columnTypes: tableMapEvent.columnTypes,
+			filtered: tableMapEvent._filtered
+		})
+		this.emit('error', new Error(`Missing column metadata for table ${tableMapEvent.schemaName}.${tableMapEvent.tableName}`))
+		next()
+		return
+	}
 	const sql = util.format(TableInfoQueryTemplate,
 		tableMapEvent.schemaName, tableMapEvent.tableName)
 
@@ -133,7 +158,17 @@ ZongJi.prototype._fetchTableInfo = function(tableMapEvent, next) {
 			// processed since next() will never be called
 			return
 		}
-
+		// Schema query result debug logging
+		console.error('[DEBUG] Query returned rows:', {
+			timestamp: new Date().toISOString(),
+			tableId: tableMapEvent.tableId,
+			schemaName: tableMapEvent.schemaName,
+			tableName: tableMapEvent.tableName,
+			rowCount: rows.length,
+			expectedColumnCount: tableMapEvent.columnCount,
+			columnNames: rows.map(r => r.COLUMN_NAME),
+			mismatch: rows.length !== tableMapEvent.columnCount
+		})
 		if (rows.length === 0) {
 			// Let consumer handle error, could be a table that no longer exists or a permissions issue
 			this.emit('error', new Error(`No rows returned from getTableInfo query ${tableMapEvent.schemaName}.${tableMapEvent.tableName}`))
@@ -296,6 +331,15 @@ ZongJi.prototype.start = function(options = {}) {
 							// Skip if no column info is returned
 							this.connection.resume()
 						} else {
+							console.error('[DEBUG] About to call updateColumnInfo:', {
+								timestamp: new Date().toISOString(),
+								tableId: event.tableId,
+								schemaName: event.schemaName,
+								tableName: event.tableName,
+								eventColumnCount: event.columnCount,
+								tableMapColumnSchemasLength: returnedTableMap.columnSchemas.length,
+								columnNames: returnedTableMap.columnSchemas.map(c => c.COLUMN_NAME)
+							});
 							// merge the column info with metadata
 							event.updateColumnInfo()
 							this.emit('binlog', event)

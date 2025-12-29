@@ -147,7 +147,7 @@ Name   | Description
     MYSQL_TEST_VERSION=5.7 MYSQL_TEST_AUTH_PLUGIN=native node --test test/mysql-versions/mysql.version.test.js
     ```
 
-  * MySQL 8.3 with caching_sha2_password (EXPECTED TO FAIL):
+  * MySQL 8.3 with caching_sha2_password:
     ```bash
     $env:MYSQL_TEST_VERSION="8.3"; $env:MYSQL_TEST_AUTH_PLUGIN="sha2"; node --test test/mysql-versions/mysql.version.test.js
     ```

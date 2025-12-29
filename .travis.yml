@@ -8,8 +8,8 @@ services:
   - docker
 before_script:
   - npm run lint
-  - docker run -p 3355:3306 --name mysql-55 -e MYSQL_ROOT_PASSWORD=numtel -d mysql:5.5 --server-id=1 --log-bin=/var/lib/mysql/mysql-bin.log --binlog-format=row
-  - docker run -p 3356:3306 --name mysql-56 -e MYSQL_ROOT_PASSWORD=numtel -d mysql:5.6 --server-id=1 --log-bin=/var/lib/mysql/mysql-bin.log --binlog-format=row
   - docker run -p 3357:3306 --name mysql-57 -e MYSQL_ROOT_PASSWORD=numtel -d mysql:5.7 --server-id=1 --log-bin=/var/lib/mysql/mysql-bin.log --binlog-format=row
+  - docker run -p 3381:3306 --name mysql-81 -e MYSQL_ROOT_PASSWORD=numtel -d mysql:8.1 --server-id=1 --log-bin=/var/lib/mysql/mysql-bin.log --binlog-format=row
+  - docker run -p 3384:3306 --name mysql-84 -e MYSQL_ROOT_PASSWORD=numtel -d mysql:8.4 --server-id=1 --log-bin=/var/lib/mysql/mysql-bin.log --binlog-format=row
 script:
   - ./test/travis/runner.sh

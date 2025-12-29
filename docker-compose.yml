@@ -1,32 +1,38 @@
 ---
 version: '2'
 services:
-  mysql55:
-    image: mysql:5.5
-    command: [ "--server-id=1", "--log-bin=/var/lib/mysql/mysql-bin.log", "--binlog-format=row"]
-    networks:
-      default:
-        aliases:
-          - mysql55
-    environment:
-      MYSQL_ROOT_PASSWORD: numtel
-
-  mysql56:
-    image: mysql:5.6
-    command: [ "--server-id=1", "--log-bin=/var/lib/mysql/mysql-bin.log", "--binlog-format=row"]
-    networks:
-      default:
-        aliases:
-          - mysql56
-    environment:
-      MYSQL_ROOT_PASSWORD: numtel
-
   mysql57:
     image: mysql:5.7
-    command: [ "--server-id=1", "--log-bin=/var/lib/mysql/mysql-bin.log", "--binlog-format=row"]
+    command: [ "--server-id=1", "--log-bin=/var/lib/mysql/mysql-bin.log", "--binlog-format=row" ]
+    ports:
+      - "33057:3306"
     networks:
       default:
         aliases:
           - mysql57
+    environment:
+      MYSQL_ROOT_PASSWORD: numtel
+
+  mysql83:
+    image: mysql:8.3
+    command: [ "--server-id=1", "--log-bin=/var/lib/mysql/mysql-bin.log", "--binlog-format=row", "--default-authentication-plugin=mysql_native_password" ]
+    ports:
+      - "33083:3306"
+    networks:
+      default:
+        aliases:
+          - mysql83
+    environment:
+      MYSQL_ROOT_PASSWORD: numtel
+
+  mysql84:
+    image: mysql:8.4
+    command: [ "--server-id=1", "--log-bin=/var/lib/mysql/mysql-bin.log", "--binlog-format=row", "--mysql-native-password=ON" ]
+    ports:
+      - "33084:3306"
+    networks:
+      default:
+        aliases:
+          - mysql84
     environment:
       MYSQL_ROOT_PASSWORD: numtel

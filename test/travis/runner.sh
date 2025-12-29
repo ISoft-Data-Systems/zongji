@@ -1,5 +1,5 @@
 #!/bin/bash
-mysqlPorts=( 3355 3356 3357 )
+mysqlPorts=( 3357 3381 3384 )
 sqlModes=( ANSI_QUOTES "" )
 dateString=( true false )
 for dateMode in "${dateString[@]}"; do

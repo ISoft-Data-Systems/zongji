@@ -1,5 +1,5 @@
 #!/bin/bash
-MYSQL_HOSTS="mysql55 mysql56 mysql57"
+MYSQL_HOSTS="mysql57 mysql83 mysql84"
 
 for hostname in ${MYSQL_HOSTS}; do
   echo $hostname + node 8

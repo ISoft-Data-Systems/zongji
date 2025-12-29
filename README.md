@@ -140,6 +140,17 @@ Name   | Description
 
 * install [Docker](https://www.docker.com/community-edition#download)
 * run `docker-compose up` and then `./docker-test.sh`
+* You can run tests for a specific MySQL version and authentication plugin (native or sha2) by setting environment variables:
+
+  * MySQL 5.7 with mysql_native_password
+    ```bash
+    MYSQL_TEST_VERSION=5.7 MYSQL_TEST_AUTH_PLUGIN=native node --test test/mysql-versions/mysql.version.test.js
+    ```
+
+  * MySQL 8.3 with caching_sha2_password:
+    ```bash
+    $env:MYSQL_TEST_VERSION="8.3"; $env:MYSQL_TEST_AUTH_PLUGIN="sha2"; node --test test/mysql-versions/mysql.version.test.js
+    ```
 
 ## Reference
 

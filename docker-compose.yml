@@ -36,3 +36,16 @@ services:
           - mysql84
     environment:
       MYSQL_ROOT_PASSWORD: numtel
+
+  # MySQL 8.4 with small binlog size for rotate event testing
+  mysql84-rotate:
+    image: mysql:8.4
+    command: [ "--server-id=1", "--log-bin=/var/lib/mysql/mysql-bin.log", "--binlog-format=row", "--mysql-native-password=ON", "--max-binlog-size=4096" ]
+    ports:
+      - "33085:3306"
+    networks:
+      default:
+        aliases:
+          - mysql84-rotate
+    environment:
+      MYSQL_ROOT_PASSWORD: numtel

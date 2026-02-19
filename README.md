@@ -139,7 +139,7 @@ Name   | Description
 ## Run Tests
 
 * install [Docker](https://www.docker.com/community-edition#download)
-* run `docker-compose up` and then `./docker-test.sh`
+* run `docker compose up` and then `./docker-test.sh`
 * You can run tests for a specific MySQL version and authentication plugin (native or sha2) by setting environment variables:
 
   * MySQL 5.7 with mysql_native_password
@@ -151,6 +151,31 @@ Name   | Description
     ```bash
     $env:MYSQL_TEST_VERSION="8.3"; $env:MYSQL_TEST_AUTH_PLUGIN="sha2"; node --test test/mysql-versions/mysql.version.test.js
     ```
+
+### Testing Binlog Rotate Events
+
+Dedicated tests verify that ZongJi handles binlog rotation without errors. Rotation occurs when `FLUSH LOGS` is executed, binlog reaches `max_binlog_size`, or MySQL restarts.
+
+**Run rotate tests:**
+
+```bash
+# Start MySQL 8.4
+docker compose up -d mysql84
+
+# Run the test (PowerShell)
+$env:TEST_MYSQL_PORT="33084"; node --test test/rotate-node-test.js
+
+# Or on Linux/Mac
+TEST_MYSQL_PORT=33084 node --test test/rotate-node-test.js
+```
+
+The tests verify that:
+- No errors occur during rotation
+- Rotate events are properly received with `binlogName` and `position`
+- Position tracking remains accurate across rotations
+- Data continuity is maintained before and after rotation
+
+For more details, see [test/rotate.md](test/rotate.md).
 
 ## Reference
 

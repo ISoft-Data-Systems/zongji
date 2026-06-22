@@ -35,6 +35,9 @@
     "eslint": "6.8.0",
     "tap": "14.10.7"
   },
+  "overrides": {
+    "form-data": "^2.5.4"
+  },
   "dependencies": {
     "@vlasky/mysql": "^2.18.7",
     "big-integer": "1.6.48",

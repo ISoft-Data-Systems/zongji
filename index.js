@@ -316,7 +316,11 @@ ZongJi.prototype.start = function(options = {}) {
 							this.connection.resume()
 						}
 					})
-					//return
+					// The fetch callback above emits 'binlog' once column info is
+					// available; return so we don't also fall through to the
+					// emit at the bottom of this handler (which would emit a
+					// second, column-info-less TableMap for the same event).
+					return
 				}
 				break
 			}

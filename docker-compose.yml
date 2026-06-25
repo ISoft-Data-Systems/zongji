@@ -10,6 +10,10 @@
 services:
   mysql57:
     image: mysql:5.7
+    # mysql:5.7 only publishes a linux/amd64 image; pin the platform so it runs
+    # under emulation on arm64 hosts (e.g. Apple Silicon) instead of failing to pull.
+    # No-op on amd64 hosts (Windows/Linux/CI), where it already runs natively.
+    platform: linux/amd64
     command: [ "--server-id=1", "--log-bin=/var/lib/mysql/mysql-bin.log", "--binlog-format=row" ]
     ports:
       - "33057:3306"

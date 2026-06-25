@@ -34,7 +34,7 @@ For a complete implementation see [`example.js`](example.js)...
 
 ## Installation
 
-- Requires Node.js v8+
+- Requires Node.js v22+
 
   ```bash
   $ npm install zongji
@@ -143,19 +143,83 @@ Neither method requires any arguments.
 
 ## Run Tests
 
-- install [Docker](https://www.docker.com/community-edition#download)
-- run `docker compose up` and then `./docker-test.sh`
-- You can run tests for a specific MySQL version and authentication plugin (native or sha2) by setting environment variables:
-  - MySQL 5.7 with mysql_native_password
+The test suite uses Node's built-in test runner (`node --test`) and runs against
+real MySQL servers provided by [`docker-compose.yml`](docker-compose.yml). You
+need [Docker](https://www.docker.com/community-edition#download) and Node.js
+v22+ installed.
 
-    ```bash
-    MYSQL_TEST_VERSION=5.7 MYSQL_TEST_AUTH_PLUGIN=native node --test test/mysql-versions/mysql.version.test.js
-    ```
+### npm scripts (recommended)
 
-  - MySQL 8.3 with caching_sha2_password:
-    ```bash
-    $env:MYSQL_TEST_VERSION="8.3"; $env:MYSQL_TEST_AUTH_PLUGIN="sha2"; node --test test/mysql-versions/mysql.version.test.js
-    ```
+Each version script starts the matching MySQL container (waiting until it is
+healthy) and then runs the full suite against it:
+
+| Command             | MySQL version | Port    |
+| ------------------- | ------------- | ------- |
+| `npm test`          | 5.7 (alias of `test:5.7`) | 33057 |
+| `npm run test:5.7`  | 5.7           | 33057   |
+| `npm run test:8.3`  | 8.3           | 33083   |
+| `npm run test:8.4`  | 8.4           | 33084   |
+| `npm run test:all`  | 5.7, 8.3, 8.4 | (each)  |
+| `npm run test:down` | —             | tear down containers |
+
+```bash
+# Run the suite against MySQL 8.4 (starts the container for you)
+npm run test:8.4
+
+# Run against all three versions in sequence
+npm run test:all
+
+# Stop and remove the containers when finished
+npm run test:down
+```
+
+Notes:
+
+- The container's MySQL version determines the binlog reset syntax used during
+  setup (`RESET MASTER` on < 8.4, `RESET BINARY LOGS AND GTIDS` on 8.4+); this
+  is detected automatically.
+- The `mysql57` service is pinned to `platform: linux/amd64` because the
+  official `mysql:5.7` image has no arm64 build — it runs under emulation on
+  Apple Silicon and natively everywhere else.
+
+`npm test` is a shortcut for `npm run test:5.7` — it starts the MySQL 5.7
+container and runs the full suite against it.
+
+### Running against a server you manage (`test:no-docker`)
+
+If you are managing the MySQL server yourself (e.g. in CI, or a server that is
+already running), use `test:no-docker`. It runs the suite without starting a
+container, against a server it assumes is already listening on port 33057 (the
+5.7 default). Set `TEST_MYSQL_PORT` to target a different running server:
+
+```bash
+# Uses port 33057 by default
+npm run test:no-docker
+
+# PowerShell — target another port
+$env:TEST_MYSQL_PORT="33084"; npm run test:no-docker
+
+# Linux/Mac — target another port
+TEST_MYSQL_PORT=33084 npm run test:no-docker
+```
+
+### Auth-plugin compatibility matrix (optional)
+
+A separate, standalone test in [test/mysql-versions/](test/mysql-versions/)
+exercises connecting under each MySQL version and authentication plugin. It is
+excluded from the main `test/*.js` glob and is run directly:
+
+```bash
+# PowerShell
+$env:MYSQL_TEST_VERSION="8.3"; $env:MYSQL_TEST_AUTH_PLUGIN="sha2"; node --test test/mysql-versions/mysql.version.test.js
+
+# Linux/Mac
+MYSQL_TEST_VERSION=8.3 MYSQL_TEST_AUTH_PLUGIN=sha2 node --test test/mysql-versions/mysql.version.test.js
+```
+
+The helper scripts [test-all-versions.ps1](test/mysql-versions/test-all-versions.ps1)
+and [test-all-versions.sh](test/mysql-versions/test-all-versions.sh) run every
+version/plugin combination in turn.
 
 ### Testing Binlog Rotate Events
 

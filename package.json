@@ -7,7 +7,8 @@
     "test": "test"
   },
   "scripts": {
-    "test": "node --test --test-concurrency=1 \"test/*.js\"",
+    "test": "npm run test:5.7",
+    "test:no-docker": "node --test --test-concurrency=1 \"test/*.js\"",
     "test:5.7": "docker compose up -d --wait mysql57 && node --test --test-concurrency=1 \"test/*.js\"",
     "test:8.3": "docker compose up -d --wait mysql83 && node --test --test-concurrency=1 \"test/*.js\"",
     "test:8.4": "docker compose up -d --wait mysql84 && node --test --test-concurrency=1 \"test/*.js\"",

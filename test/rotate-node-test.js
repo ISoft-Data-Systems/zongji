@@ -2,25 +2,14 @@ const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert');
 const mysql = require('@vlasky/mysql');
 const ZongJi = require('../');
+const settings = require('./settings/mysql');
 
-// Configuration
-const TEST_PORT = process.env.TEST_MYSQL_PORT || 33084;
-
-const mysqlConfig = {
-    host: 'localhost',
-    user: 'root',
-    password: 'numtel',
-    port: TEST_PORT
-    // Don't specify database initially - we'll create it first
-};
-
-const mysqlConfigWithDb = {
-    host: 'localhost',
-    user: 'root',
-    password: 'numtel',
-    port: TEST_PORT,
-    database: 'zongji_test'
-};
+// Use the shared connection settings (port selected per docker-compose service,
+// plus secureAuth for the caching_sha2 handshake on MySQL 8.x).
+const mysqlConfigWithDb = settings.connection;
+const mysqlConfig = { ...settings.connection };
+// Don't specify database initially - we'll create it first
+delete mysqlConfig.database;
 
 let mysqlConnection;
 let zongjiInstance;

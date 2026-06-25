@@ -1,8 +1,8 @@
-const tap = require('tap');
+const { it } = require('node:test');
+const assert = require('node:assert');
 const getEventClass = require('./../lib/code_map').getEventClass;
 
-tap.test('Codemap', test => {
-  test.equal(getEventClass(2).name, 'Query');
-  test.equal(getEventClass(490).name, 'Unknown');
-  test.end();
+it('Codemap', () => {
+  assert.equal(getEventClass(2).name, 'Query');
+  assert.equal(getEventClass(490).name, 'Unknown');
 });

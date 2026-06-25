@@ -13,21 +13,38 @@ exports.init = function(done) {
   delete connObj.database;
   const conn = mysql.createConnection(connObj);
 
-  querySequence(
-    conn,
-    [
-      'SET GLOBAL sql_mode = \'' + settings.sessionSqlMode + '\'',
-      `DROP DATABASE IF EXISTS ${SCHEMA_NAME}`,
-      `CREATE DATABASE ${SCHEMA_NAME}`,
-      `USE ${SCHEMA_NAME}`,
-      'RESET MASTER',
-      // 'SELECT VERSION() AS version'
-    ],
-    error => {
+  // `RESET MASTER` was removed in MySQL 8.4 in favor of
+  // `RESET BINARY LOGS AND GTIDS`. Detect the server version first so the
+  // right statement is used regardless of which port/version is targeted.
+  // https://dev.mysql.com/doc/refman/8.4/en/reset-binary-logs-and-gtids.html
+  querySequence(conn, ['SELECT VERSION() AS version'], (verErr, verResults) => {
+    if (verErr) {
       conn.destroy();
-      done(error);
+      return done(verErr);
     }
-  );
+
+    const version = verResults[verResults.length - 1][0].version
+      .split('-')[0]
+      .split('.')
+      .map(part => parseInt(part, 10));
+    const isAtLeast84 = version[0] > 8 || (version[0] === 8 && version[1] >= 4);
+    const resetBinlog = isAtLeast84 ? 'RESET BINARY LOGS AND GTIDS' : 'RESET MASTER';
+
+    querySequence(
+      conn,
+      [
+        'SET GLOBAL sql_mode = \'' + settings.sessionSqlMode + '\'',
+        `DROP DATABASE IF EXISTS ${SCHEMA_NAME}`,
+        `CREATE DATABASE ${SCHEMA_NAME}`,
+        `USE ${SCHEMA_NAME}`,
+        resetBinlog,
+      ],
+      error => {
+        conn.destroy();
+        done(error);
+      }
+    );
+  });
 };
 
 exports.execute = function(queries, done) {

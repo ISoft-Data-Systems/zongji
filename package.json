@@ -42,6 +42,9 @@
     "eslint": "^10.5.0",
     "globals": "^17.7.0"
   },
+  "overrides": {
+    "form-data": "^2.5.4"
+  },
   "dependencies": {
     "@vlasky/mysql": "^2.18.7",
     "big-integer": "1.6.48",

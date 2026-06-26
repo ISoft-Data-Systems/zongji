@@ -1,13 +1,19 @@
 {
   "name": "@isoftdata/zongji",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "A mysql binlog listener running on Node.js",
   "main": "index.js",
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "test": "tap --bail --no-coverage --jobs=1 test/*.js",
+    "test": "npm run test:5.7",
+    "test:no-docker": "node --test --test-concurrency=1 \"test/*.js\"",
+    "test:5.7": "docker compose up -d --wait mysql57 && node --test --test-concurrency=1 \"test/*.js\"",
+    "test:8.3": "docker compose up -d --wait mysql83 && node --test --test-concurrency=1 \"test/*.js\"",
+    "test:8.4": "docker compose up -d --wait mysql84 && node --test --test-concurrency=1 \"test/*.js\"",
+    "test:all": "npm run test:5.7 && npm run test:8.3 && npm run test:8.4",
+    "test:down": "docker compose down -v",
     "lint": "eslint ."
   },
   "repository": {
@@ -29,11 +35,12 @@
   },
   "homepage": "https://github.com/ISoft-Data-Systems/zongji",
   "engines": {
-    "node": ">= 8.0"
+    "node": ">=22.15.0"
   },
   "devDependencies": {
-    "eslint": "6.8.0",
-    "tap": "14.10.7"
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.5.0",
+    "globals": "^17.7.0"
   },
   "overrides": {
     "form-data": "^2.5.4"

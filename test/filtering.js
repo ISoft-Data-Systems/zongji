@@ -1,85 +1,76 @@
-const tap = require('tap');
+const { describe, it, before } = require('node:test');
+const assert = require('node:assert');
 const ZongJi = require('../');
 const settings = require('./settings/mysql');
 const testDb = require('./helpers');
 
-// this test is only used for initialization
-tap.test('Initialise testing db', test => {
-  testDb.init(err => {
-    if (err) {
-      return test.fail(err);
-    }
+const initDb = () => new Promise((resolve, reject) => {
+  testDb.init(err => err ? reject(err) : resolve());
+});
 
-    test.end();
+const execute = queries => new Promise((resolve, reject) => {
+  testDb.execute(queries, (err, result) => err ? reject(err) : resolve(result));
+});
+
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+before(initDb);
+
+describe('Unit test', () => {
+  const zongji = new ZongJi(settings.connection);
+
+  it('Check that exclude overrides include', () => {
+    zongji._filters({
+      includeEvents: ['tablemap', 'writerows', 'updaterows', 'rotate'],
+      excludeEvents: ['rotate'],
+      includeSchema: {db1: true, db2: ['one_table'], db3: true},
+      excludeSchema: {db3: true}
+    });
+    assert.ok(!zongji._skipEvent('tablemap'));
+    assert.ok(zongji._skipEvent('rotate'));
+    assert.ok(!zongji._skipSchema('db1', 'any_table'));
+    assert.ok(!zongji._skipSchema('db2', 'one_table'));
+    assert.ok(zongji._skipSchema('db2', 'another_table'));
+    assert.ok(zongji._skipSchema('db3', 'any_table'));
+  });
+
+  it('includeSchema limits to listed tables', () => {
+    zongji._filters({
+      includeSchema: {db1: ['just_me']}
+    });
+    assert.ok(!zongji._skipSchema('db1', 'just_me'));
+    assert.ok(zongji._skipSchema('db2', 'anything_else'));
+    assert.ok(zongji._skipSchema('db1', 'not_me'));
+  });
+
+  it('excludeSchema skips listed tables', () => {
+    zongji._filters({
+      excludeSchema: {db1: ['not_me']}
+    });
+
+    assert.ok(!zongji._skipSchema('db1', 'anything_else'));
+    assert.ok(!zongji._skipSchema('db2', 'anything_else'));
+    assert.ok(zongji._skipSchema('db1', 'not_me'));
+  });
+
+  it('excludeEvents skips listed events', () => {
+    zongji._filters({
+      excludeEvents: ['rotate']
+    });
+    assert.ok(!zongji._skipEvent('tablemap'));
+    assert.ok(zongji._skipEvent('rotate'));
+  });
+
+  it('includeEvents limits to listed events', () => {
+    zongji._filters({
+      includeEvents: ['rotate'],
+    });
+    assert.ok(zongji._skipEvent('tablemap'));
+    assert.ok(!zongji._skipEvent('rotate'));
   });
 });
 
-tap.test('Unit test', test => {
-  const zongji = new ZongJi(settings.connection);
-
-    test.test('Check that exclude overrides include', test => {
-      zongji._filters({
-        includeEvents: ['tablemap', 'writerows', 'updaterows', 'rotate'],
-        excludeEvents: ['rotate'],
-        includeSchema: {db1: true, db2: ['one_table'], db3: true},
-        excludeSchema: {db3: true}
-      });
-      test.ok(!zongji._skipEvent('tablemap'));
-      test.ok(zongji._skipEvent('rotate'));
-      test.ok(!zongji._skipSchema('db1', 'any_table'));
-      test.ok(!zongji._skipSchema('db2', 'one_table'));
-      test.ok(zongji._skipSchema('db2', 'another_table'));
-      test.ok(zongji._skipSchema('db3', 'any_table'));
-
-      test.end();
-    });
-
-    test.test(test => {
-      zongji._filters({
-        includeSchema: {db1: ['just_me']}
-      });
-      test.ok(!zongji._skipSchema('db1', 'just_me'));
-      test.ok(zongji._skipSchema('db2', 'anything_else'));
-      test.ok(zongji._skipSchema('db1', 'not_me'));
-
-      test.end();
-    });
-
-    test.test(test => {
-      zongji._filters({
-        excludeSchema: {db1: ['not_me']}
-      });
-
-      test.ok(!zongji._skipSchema('db1', 'anything_else'));
-      test.ok(!zongji._skipSchema('db2', 'anything_else'));
-      test.ok(zongji._skipSchema('db1', 'not_me'));
-
-      test.end();
-    });
-
-    test.test(test =>{
-      zongji._filters({
-        excludeEvents: ['rotate']
-      });
-      test.ok(!zongji._skipEvent('tablemap'));
-      test.ok(zongji._skipEvent('rotate'));
-
-      test.end();
-    });
-
-    test.test(test =>{
-      test.plan(2);
-      zongji._filters({
-        includeEvents: ['rotate'],
-      });
-      test.ok(zongji._skipEvent('tablemap'));
-      test.ok(!zongji._skipEvent('rotate'));
-    });
-
-    test.end();
-});
-
-tap.test('Exclue all the schema', test => {
+it('Exclude all the schema', { timeout: 15000 }, async () => {
   const zongji = new ZongJi(settings.connection);
 
   const eventLog = [];
@@ -88,40 +79,44 @@ tap.test('Exclue all the schema', test => {
   zongji.on('binlog', event => eventLog.push(event));
   zongji.on('error', error => errorLog.push(error));
 
-  test.tearDown(() => zongji.stop());
+  try {
+    await new Promise((resolve, reject) => {
+      // Set includeSchema to not include anything, recieve no row events
+      // Ensure that filters are applied
+      const includeSchema = {};
+      zongji.start({
+        includeEvents: ['tablemap', 'writerows', 'updaterows', 'deleterows'],
+        includeSchema: includeSchema
+      });
 
-  // Set includeSchema to not include anything, recieve no row events
-  // Ensure that filters are applied
-  const includeSchema = {};
-  zongji.start({
-    includeEvents: ['tablemap', 'writerows', 'updaterows', 'deleterows'],
-    includeSchema: includeSchema
-  });
-
-  zongji.on('ready', () => {
-    const testTable = 'filter_test';
-    testDb.execute([
-      `DROP TABLE IF EXISTS ${testTable}`,
-      `CREATE TABLE ${testTable} (col INT UNSIGNED)`,
-      `INSERT INTO ${testTable} (col) VALUES (10)`,
-      `UPDATE ${testTable} SET col = 15`,
-      `DELETE FROM ${testTable}`,
-    ], (error) => {
-      if (error) {
-        return test.fail(error);
-      }
-
-      // Give 1 second to see if any events are emitted, they should not be!
-      setTimeout(() => {
-        test.equal(eventLog.length, 0);
-        test.equal(errorLog.length, 0);
-        test.end();
-      }, 1000);
+      zongji.on('ready', () => {
+        const testTable = 'filter_test';
+        execute([
+          `DROP TABLE IF EXISTS ${testTable}`,
+          `CREATE TABLE ${testTable} (col INT UNSIGNED)`,
+          `INSERT INTO ${testTable} (col) VALUES (10)`,
+          `UPDATE ${testTable} SET col = 15`,
+          `DELETE FROM ${testTable}`,
+        ]).then(() => {
+          // Give 1 second to see if any events are emitted, they should not be!
+          setTimeout(() => {
+            try {
+              assert.equal(eventLog.length, 0);
+              assert.equal(errorLog.length, 0);
+              resolve();
+            } catch (e) {
+              reject(e);
+            }
+          }, 1000);
+        }).catch(reject);
+      });
     });
-  });
+  } finally {
+    zongji.stop();
+  }
 });
 
-tap.test('Change filter when ZongJi is running', test => {
+it('Change filter when ZongJi is running', { timeout: 15000 }, async () => {
   // Set includeSchema to skip table after the tableMap has already been
   // cached once, recieve no row events afterwards
   const testTable = 'after_init_test';
@@ -132,58 +127,42 @@ tap.test('Change filter when ZongJi is running', test => {
   const eventLog = [];
 
   zongji.on('binlog', event => eventLog.push(event));
-  zongji.on('error', error => test.fail(error));
 
-  zongji.start({
-    includeEvents: ['tablemap', 'writerows', 'updaterows', 'deleterows'],
-    includeSchema: includeSchema
-  });
+  try {
+    await new Promise((resolve, reject) => {
+      zongji.on('error', reject);
 
-  test.tearDown(() => zongji.stop());
+      zongji.start({
+        includeEvents: ['tablemap', 'writerows', 'updaterows', 'deleterows'],
+        includeSchema: includeSchema
+      });
 
-  testDb.execute(
-    [
-    `DROP TABLE IF EXISTS ${testTable}`,
-    `CREATE TABLE ${testTable} (col INT UNSIGNED)`,
-    `INSERT INTO ${testTable} (col) VALUES (10)`,
-    ],
-    err => {
-      if (err) {
-        return test.fail(err);
-      }
+      execute([
+        `DROP TABLE IF EXISTS ${testTable}`,
+        `CREATE TABLE ${testTable} (col INT UNSIGNED)`,
+        `INSERT INTO ${testTable} (col) VALUES (10)`,
+      ]).then(() => delay(1000)).then(async () => {
+        assert.equal(eventLog.length, 2);
 
-      setTimeout(() => {
-        test.equal(eventLog.length, 2);
+        // update filter: reset for next phase
+        eventLog.splice(0, eventLog.length);
 
-        test.test('update filter', test => {
-          // reset for next test
-          eventLog.splice(0, eventLog.length);
-
-          zongji._filters({
-            includeEvents: ['tablemap', 'writerows', 'updaterows', 'deleterows'],
-            includeSchema: {},
-          });
-
-          testDb.execute(
-            [
-              `UPDATE ${testTable} SET col = 15`,
-              `DELETE FROM ${testTable}`,
-            ],
-            (error) => {
-              if (error) {
-                return test.fail(error);
-              }
-
-              setTimeout(() => {
-                test.equal(eventLog.length, 0);
-                test.end();
-              }, 1000);
-            }
-          );
+        zongji._filters({
+          includeEvents: ['tablemap', 'writerows', 'updaterows', 'deleterows'],
+          includeSchema: {},
         });
 
-        test.end();
-      }, 1000);
-    }
-  );
+        await execute([
+          `UPDATE ${testTable} SET col = 15`,
+          `DELETE FROM ${testTable}`,
+        ]);
+
+        await delay(1000);
+        assert.equal(eventLog.length, 0);
+        resolve();
+      }).catch(reject);
+    });
+  } finally {
+    zongji.stop();
+  }
 });

@@ -200,13 +200,25 @@ ZongJi.prototype._filters = function({
 }
 
 ZongJi.prototype.get = function(name) {
+	// For 'position'/'filename', return the most recently seen ("live") values
+	// tracked in _cachedPosition rather than this.options, which only advances
+	// on Rotate events. This makes the documented resume pattern work: save
+	// get('filename')/get('position') at stop time and restart from them.
+	const read = key => {
+		if ((key === 'position' || key === 'filename') &&
+			this._cachedPosition && this._cachedPosition[key] !== undefined) {
+			return this._cachedPosition[key]
+		}
+		return this.options[key]
+	}
+
 	let result
 	if (typeof name === 'string') {
-		result = this.options[name]
+		result = read(name)
 	} else if (Array.isArray(name)) {
 		result = name.reduce(
 			(acc, cur) => {
-				acc[cur] = this.options[cur]
+				acc[cur] = read(cur)
 				return acc
 			},
 			{},
@@ -316,7 +328,11 @@ ZongJi.prototype.start = function(options = {}) {
 							this.connection.resume()
 						}
 					})
-					//return
+					// The fetch callback above emits 'binlog' once column info is
+					// available; return so we don't also fall through to the
+					// emit at the bottom of this handler (which would emit a
+					// second, column-info-less TableMap for the same event).
+					return
 				}
 				break
 			}

@@ -1,8 +1,19 @@
 ---
-version: '2'
+# MySQL versions used by the test suite.
+# - 5.7 only supports mysql_native_password (the default there).
+# - 8.3 / 8.4 are left on their default caching_sha2_password plugin, since
+#   @vlasky/mysql supports caching_sha2 and that is what our customers run on 8.x.
+#   The connection sets `secureAuth: true` (see test/settings/mysql.js) so the
+#   caching_sha2 handshake works over the plaintext test connection.
+# Healthchecks let `docker compose up -d --wait <service>` block until the
+# server is actually accepting authenticated connections.
 services:
   mysql57:
     image: mysql:5.7
+    # mysql:5.7 only publishes a linux/amd64 image; pin the platform so it runs
+    # under emulation on arm64 hosts (e.g. Apple Silicon) instead of failing to pull.
+    # No-op on amd64 hosts (Windows/Linux/CI), where it already runs natively.
+    platform: linux/amd64
     command: [ "--server-id=1", "--log-bin=/var/lib/mysql/mysql-bin.log", "--binlog-format=row" ]
     ports:
       - "33057:3306"
@@ -12,10 +23,16 @@ services:
           - mysql57
     environment:
       MYSQL_ROOT_PASSWORD: numtel
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -uroot -pnumtel --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
 
   mysql83:
     image: mysql:8.3
-    command: [ "--server-id=1", "--log-bin=/var/lib/mysql/mysql-bin.log", "--binlog-format=row", "--default-authentication-plugin=mysql_native_password" ]
+    command: [ "--server-id=1", "--log-bin=/var/lib/mysql/mysql-bin.log", "--binlog-format=row" ]
     ports:
       - "33083:3306"
     networks:
@@ -24,10 +41,16 @@ services:
           - mysql83
     environment:
       MYSQL_ROOT_PASSWORD: numtel
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -uroot -pnumtel --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
 
   mysql84:
     image: mysql:8.4
-    command: [ "--server-id=1", "--log-bin=/var/lib/mysql/mysql-bin.log", "--binlog-format=row", "--mysql-native-password=ON" ]
+    command: [ "--server-id=1", "--log-bin=/var/lib/mysql/mysql-bin.log", "--binlog-format=row" ]
     ports:
       - "33084:3306"
     networks:
@@ -36,11 +59,17 @@ services:
           - mysql84
     environment:
       MYSQL_ROOT_PASSWORD: numtel
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -uroot -pnumtel --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
 
   # MySQL 8.4 with small binlog size for rotate event testing
   mysql84-rotate:
     image: mysql:8.4
-    command: [ "--server-id=1", "--log-bin=/var/lib/mysql/mysql-bin.log", "--binlog-format=row", "--mysql-native-password=ON", "--max-binlog-size=4096" ]
+    command: [ "--server-id=1", "--log-bin=/var/lib/mysql/mysql-bin.log", "--binlog-format=row", "--max-binlog-size=4096" ]
     ports:
       - "33085:3306"
     networks:
@@ -49,3 +78,9 @@ services:
           - mysql84-rotate
     environment:
       MYSQL_ROOT_PASSWORD: numtel
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -uroot -pnumtel --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
